@@ -1,25 +1,44 @@
 # Orquestrator
 
-Equipo personal de IA con **OpenClaw** como motor y **My Virtual Office** como interfaz. Servicio de coordinación previsto: TypeScript + Fastify y PostgreSQL + Prisma. No se reemplazan los productos upstream con simulaciones.
+Orquestador de un equipo de agentes con **OpenClaw como motor de ejecución** y **My Virtual Office como interfaz**. El coordinador administra objetivos, planes, asignaciones, dependencias, admisión, revisión y recuperación. La conexión al motor es solo una parte del proyecto.
 
-La especificación original está en [SDD.md](SDD.md). Estado actual: preparación de fase 0; no hay un agente real conectado todavía.
+Especificación: [SDD.md](SDD.md).
 
-## Desarrollo
+## Implementado
 
-Requiere Node 24.16+ (rama 24) o 26.1+. Esta entrega no tiene dependencias externas.
+- API TypeScript + Fastify con token de propietario y límites de tamaño.
+- Contrato de planes: validación de roles, entregables, criterios, claves y DAG.
+- Núcleo de admisión: límites total/especialistas, exclusión por workspace, pausa, dependencias aceptadas y bloqueo por fallo.
+- Conservación de capacidad durante cancelación y reconciliación.
+- Pruebas y CI con dependencias fijadas mediante package-lock.json.
+
+El núcleo de admisión es una función de dominio probada. Aún no hay worker, persistencia ni despacho real. Sus decisiones deberán aplicarse transaccionalmente con lease/fencing antes de ejecutar agentes. No se sustituyó OpenClaw por un motor simulado.
+
+## Ejecutar
+
+Node 24.16+ (rama 24) o 26.1+.
 
 ```sh
+npm ci
+npm run typecheck
 npm test
-npm run probe:gateway
+export ORCHESTRATOR_TOKEN="$(openssl rand -hex 32)"
+npm start
 ```
 
-El probe usa `OPENCLAW_GATEWAY_URL` o `ws://127.0.0.1:18789`. Solo verifica el challenge de descubrimiento; no autentica ni ejecuta agentes. Sin un Gateway activo termina con error, como corresponde.
+Escucha en `127.0.0.1:3000`. `PORT` y `HOST` permiten cambiarlo. No publicar este servicio directamente en Internet.
 
-## Documentación
+| Ruta | Comportamiento |
+| --- | --- |
+| GET /api/v1/health/live | Pública; confirma proceso vivo |
+| GET /api/v1/health/ready | Autenticada; 503 mientras falten DB y runtime |
+| GET /api/v1/capabilities | Funciones realmente habilitadas |
+| POST /api/v1/plans/validate | Valida sin persistir; devuelve 200 o 422 |
 
-- [Compatibilidad e integración pendiente](docs/COMPATIBILITY.md)
-- [Evidencia de aceptación](docs/ACCEPTANCE.md)
-- [Decisiones](docs/DECISIONS.md)
-- [Operación local](docs/RUNBOOK.md)
+Rutas privadas requieren `Authorization: Bearer <ORCHESTRATOR_TOKEN>`. El ejemplo de plan de la sección 9 del SDD puede enviarse al validador. `order` es el orden topológico y `ready` identifica raíces estructurales, no reservas de ejecución.
 
-Siguiente entrega: completar validación real de versiones y conectar un agente en la oficina (AT-01). Se necesitan Gateway y oficina aislados, proveedor/modelo y presupuesto definido. No desplegar producción desde esta rama.
+## Siguiente entrega
+
+Persistencia PostgreSQL/Prisma de objetivos, planes y tareas, con admisión transaccional. Después: despacho nativo OpenClaw con correlación, reconciliación y revisión; visualización desde la oficina. Las pruebas de integración real siguen pendientes y se registran por separado.
+
+[Compatibilidad](docs/COMPATIBILITY.md) · [Aceptación](docs/ACCEPTANCE.md) · [Decisiones](docs/DECISIONS.md) · [Operación](docs/RUNBOOK.md)
