@@ -6,3 +6,5 @@ work/
 artifacts/
 coverage/
 *.log
+
+*.dump

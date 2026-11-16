@@ -1,23 +1,27 @@
-# Evidencia de aceptación
+# Evidencia — SDD 3.0
 
-Fecha: 2026-11-16. Entrega: preparación de fase 0.
+Fecha: 2026-11-16. Rama solicitada: main. Arquitectura: runtime nativo, sin OpenClaw ni My Virtual Office. Los resultados anteriores del probe upstream quedan históricos.
 
-| Comprobación | Resultado | Alcance |
-| --- | --- | --- |
-| SDD.md idéntico al adjunto | Verificado con cmp | Especificación preservada |
-| Inspección upstream | Commits registrados en COMPATIBILITY.md | Evidencia estática, no integración |
-| npm test | 9/9 pasan en Node 24.22.1 | Challenge válido, JSON inválido, frame incorrecto, nonce ausente, cierre, error, timeout, URL insegura |
-| npm run probe:gateway | Falla: no se pudo conectar al Gateway local | No hay Gateway accesible en ws://127.0.0.1:18789 durante esta prueba |
-| CI | Workflow añadido | Ejecución remota pendiente |
+| Comprobación | Evidencia |
+| --- | --- |
+| Tipos | npm run typecheck correcto |
+| Unitarias/contratos HTTP de modelo | 30 pruebas; esquema/DAG, admisión, autenticación, tamaños, respuestas y errores de proveedor |
+| PostgreSQL real | Suite con esquemas aislados por ejecución; pedidos idempotentes, conflictos, persistencia y reapertura de Store |
+| Concurrencia | Claims simultáneos con límite de especialistas y revisión previa al fan-in |
+| Planificación nativa | Objetivo crea coordinator; modelo determinista entrega DAG; aceptación registra revisión nueva |
+| Herramientas | Ciclo de modelo/herramientas con checkpoints y artefactos descargables |
+| Archivos y memoria | Traversal rechazado; lectura limitada a proyecto/intento/dependencias; memoria de otro proyecto no aparece |
+| Revisión y aprobaciones | Dos decisiones concurrentes producen éxito+409; hash incorrecto rechazado |
+| Fallos | Lease vencido queda needs_reconciliation; no redispatch automático; retry carga estimación conservadora |
+| Pausa/cancelación/presupuesto | No se reclama un proyecto pausado ni con presupuesto insuficiente; cancelación propaga descendientes |
+| Automatización | Una ocurrencia por intervalo; rechazo de solapamiento con trabajo sin terminar |
+| Webhook | HMAC, timestamp vigente, replay idempotente y timestamp viejo rechazado |
+| SSE | Entrega de evento comprometido y cierre tras abortar cliente; prueba HTTP real |
+| Intervención humana | waiting_input conserva pregunta; respuesta del propietario entra al contexto del nuevo intento |
+| Panel real | Chromium: login, crear objetivo, texto malicioso no interpretado como HTML, ancho móvil 390px y logout |
+| Backup/restauración | pg_dump custom y pg_restore a base nueva: 66 tareas restauradas; no se arrancó worker contra la copia |
+| Contenedor | Imagen construida con npm ci y CA de sesión montada como secret; arranque verificado sin privilegios y read-only, con DB/API/panel operativos |
 
-AT-01 a AT-22: pendientes. No se acreditó ninguna sesión real ni se ejecutó inferencia. Fase 0 sigue abierta hasta probar autenticación, capacidades mínimas y condiciones de activación; fase 1 todavía no iniciada.
+La suite de integración ejecuta 14 pruebas contando la prueba contenedora y el panel. Usa proveedor determinista para probar el motor; no acredita calidad ni disponibilidad de modelos reales. No se usaron credenciales de inferencia ni se consumió presupuesto de un proveedor.
 
-## Base del coordinador
-
-- `npm run typecheck`: correcto.
-- `npm test`: 34 pruebas pasan (9 probe, 13 contrato, 4 API, 8 admisión).
-- DAG: orden topológico, ciclos, referencias faltantes, duplicados, criterios vacíos y límite de 20 tareas.
-- Admisión: fan-out, fan-in posterior a aceptación, bloqueo por fallo, concurrencia, workspace exclusivo, pausa y reservas conservadas ante reconciliación/cancelación.
-- HTTP: autenticación, estado de salud, capacidades deshabilitadas, 422 por ciclo, 400 por JSON malformado, 413 por tamaño.
-
-Estas pruebas acreditan componentes locales. AT-02/03/04 tienen cobertura parcial de dominio; permanecen pendientes en flujo real. No hay persistencia, reservas globales, despacho ni integración con la oficina en esta entrega.
+Pendientes: inferencia real con modelo/credenciales, SSE bajo carga y proxy, continuidad de 24 h, métricas operativas y capacidades avanzadas de FEATURES.md. No se declara implementado el alcance completo.

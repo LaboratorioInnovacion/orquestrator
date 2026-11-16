@@ -7,19 +7,24 @@
     "node": ">=24.16.0 <25 || >=26.1.0"
   },
   "scripts": {
-    "test": "node --import tsx --test tests/*.test.mjs tests/unit/*.test.ts",
-    "probe:gateway": "node scripts/probe-gateway.mjs",
+    "test": "node --import tsx --test tests/unit/*.test.ts",
     "typecheck": "tsc --noEmit",
     "dev": "tsx watch services/orchestrator/server.ts",
-    "start": "tsx services/orchestrator/server.ts"
+    "start": "tsx services/orchestrator/server.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "test:integration": "node --import tsx --test tests/integration/*.test.ts",
+    "check": "npm run typecheck && npm test"
   },
   "dependencies": {
     "fastify": "^5.12.8",
+    "pg": "^8.23.1",
+    "tsx": "^4.23.15",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "tsx": "^4.23.15",
+    "@types/pg": "^8.23.1",
+    "playwright-core": "^1.65.1",
     "typescript": "^7.0.2"
   }
 }

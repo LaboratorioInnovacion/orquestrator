@@ -1,44 +1,53 @@
 # Orquestrator
 
-Orquestador de un equipo de agentes con **OpenClaw como motor de ejecución** y **My Virtual Office como interfaz**. El coordinador administra objetivos, planes, asignaciones, dependencias, admisión, revisión y recuperación. La conexión al motor es solo una parte del proyecto.
+**Motor propio de agentes de IA**, similar en propósito a OpenClaw. Planifica objetivos, ejecuta especialistas, coordina dependencias y conserva resultados. No depende de OpenClaw ni de My Virtual Office.
 
-Especificación: [SDD.md](SDD.md).
+Diseño vigente: [SDD 3.0](SDD.md). El SDD anterior se conserva como referencia histórica. Desarrollo en `main` por decisión del propietario.
 
-## Implementado
+## Qué funciona
 
-- API TypeScript + Fastify con token de propietario y límites de tamaño.
-- Contrato de planes: validación de roles, entregables, criterios, claves y DAG.
-- Núcleo de admisión: límites total/especialistas, exclusión por workspace, pausa, dependencias aceptadas y bloqueo por fallo.
-- Conservación de capacidad durante cancelación y reconciliación.
-- Pruebas y CI con dependencias fijadas mediante package-lock.json.
+- Coordinador que propone un DAG a partir del objetivo y lo entrega para aceptación.
+- Runtime nativo con sesiones/checkpoints, bucle modelo/herramientas y perfiles de agente.
+- PostgreSQL: planes versionados, tareas, intentos, archivos, memoria, mensajes, eventos y auditoría.
+- Admisión transaccional: tres intentos activos, dos especialistas, dependencias aceptadas y pausa.
+- Archivos de texto aislados en base de datos, checksum y descarga autenticada por ID.
+- Revisión por propietario, correcciones limitadas y cancelación de descendientes.
+- Preguntas al propietario y aprobaciones vinculadas a acción, hash, versión y vencimiento.
+- Presupuesto de tokens con reservas y estimaciones conservadoras cuando falta uso real.
+- Automatizaciones por intervalo, sin solapamiento ni recuperación masiva de ocurrencias vencidas.
+- Webhook firmado, deduplicación, eventos con cursor y SSE.
+- Panel web propio, API autenticada, CI, contenedor y procedimientos de backup/restauración.
 
-El núcleo de admisión es una función de dominio probada. Aún no hay worker, persistencia ni despacho real. Sus decisiones deberán aplicarse transaccionalmente con lease/fencing antes de ejecutar agentes. No se sustituyó OpenClaw por un motor simulado.
+No están implementados shell, navegador de agentes, canales de mensajería, multimedia, ACP, nodos remotos, plugins dinámicos, RAG vectorial, cron con calendario, fallback de modelos ni presupuesto monetario. No se han probado inferencias con un proveedor real ni estabilidad de 24 h. Consultar [estado completo](docs/FEATURES.md).
 
-## Ejecutar
+## Arranque con Docker
 
-Node 24.16+ (rama 24) o 26.1+.
+```sh
+cp .env.example .env
+```
+
+Completar `ORCHESTRATOR_TOKEN` y `POSTGRES_PASSWORD` con valores distintos generados con `openssl rand -hex 32`. Configurar `MODEL_BASE_URL`, `MODEL_NAME` y, si corresponde, `MODEL_API_KEY` de un proveedor compatible con Chat Completions y herramientas. La URL base suele terminar en `/v1`. Usar HTTPS fuera de loopback.
+
+```sh
+docker compose up --build -d
+```
+
+Abrir **http://localhost:3000** e ingresar el token del propietario. Sin proveedor configurado se puede gestionar proyectos/planes pero no se ejecutan agentes; readiness devuelve 503. Las credenciales no se envían al panel.
+
+Crear un objetivo y presupuesto; comienza pausado con una tarea de coordinador. Reanudar para generar la propuesta. Revisar sus entregables y aceptar el plan; se registran las tareas para ejecución. Cada entrega espera revisión antes de desbloquear dependencias. El presupuesto se comparte entre planificación, ejecución y correcciones. Las aprobaciones registran decisiones; no agregan herramientas externas que el sistema no tenga.
+
+## Desarrollo local
+
+Node 24.16+ de la rama 24 o >=26.1; PostgreSQL 17.
 
 ```sh
 npm ci
-npm run typecheck
-npm test
-export ORCHESTRATOR_TOKEN="$(openssl rand -hex 32)"
-npm start
+npm run check
+npm run test:integration
 ```
 
-Escucha en `127.0.0.1:3000`. `PORT` y `HOST` permiten cambiarlo. No publicar este servicio directamente en Internet.
+La integración requiere `TEST_DATABASE_URL` apuntando a una base aislada; sin ella se omite. La prueba de panel requiere además `CHROMIUM_PATH` a un Chromium instalado. Nunca usar una base de producción para pruebas.
 
-| Ruta | Comportamiento |
-| --- | --- |
-| GET /api/v1/health/live | Pública; confirma proceso vivo |
-| GET /api/v1/health/ready | Autenticada; 503 mientras falten DB y runtime |
-| GET /api/v1/capabilities | Funciones realmente habilitadas |
-| POST /api/v1/plans/validate | Valida sin persistir; devuelve 200 o 422 |
+Para iniciar localmente, exportar `DATABASE_URL`, `ORCHESTRATOR_TOKEN` y las variables del modelo, y ejecutar `npm start`. Las migraciones versionadas se aplican antes de escuchar. `npm run db:migrate` permite aplicarlas por separado. Escucha en `127.0.0.1:3000` por defecto; `HOST` y `PORT` son configurables.
 
-Rutas privadas requieren `Authorization: Bearer <ORCHESTRATOR_TOKEN>`. El ejemplo de plan de la sección 9 del SDD puede enviarse al validador. `order` es el orden topológico y `ready` identifica raíces estructurales, no reservas de ejecución.
-
-## Siguiente entrega
-
-Persistencia PostgreSQL/Prisma de objetivos, planes y tareas, con admisión transaccional. Después: despacho nativo OpenClaw con correlación, reconciliación y revisión; visualización desde la oficina. Las pruebas de integración real siguen pendientes y se registran por separado.
-
-[Compatibilidad](docs/COMPATIBILITY.md) · [Aceptación](docs/ACCEPTANCE.md) · [Decisiones](docs/DECISIONS.md) · [Operación](docs/RUNBOOK.md)
+[API](docs/API.md) · [Funciones](docs/FEATURES.md) · [Aceptación](docs/ACCEPTANCE.md) · [Operación](docs/RUNBOOK.md) · [Decisiones](docs/DECISIONS.md)
