@@ -1,0 +1,11 @@
+{
+  "name": "orquestrator",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.16.0 <25 || >=26.1.0" },
+  "scripts": {
+    "test": "node --test",
+    "probe:gateway": "node scripts/probe-gateway.mjs"
+  }
+}
